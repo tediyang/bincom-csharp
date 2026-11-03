@@ -1,0 +1,140 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Hello World";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="card-header bg-primary text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">
+                        Hello World
+                    </span>
+                    <span class="badge bg-light text-primary rounded-pill px-3 py-2 fw-medium" id="status-badge">
+                        Connecting to Backend...
+                    </span>
+                </div>
+                <div class="card-body p-5 text-center">
+                    <!-- Loading state -->
+                    <div id="loading-state" class="py-4">
+                        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Calling backend endpoint <code>/api/hello</code>...</p>
+                    </div>
+
+                    <!-- Content state -->
+                    <div id="content-state" style="display: none;">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill mb-3">
+                            &#10003; Response Received from Backend
+                        </span>
+                        
+                        <h2 id="hello-message" class="display-3 fw-bold text-primary mb-3"></h2>
+
+                        <div class="bg-light rounded-3 p-3 text-start mb-4 border">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong class="text-secondary small text-uppercase">API Response Details</strong>
+                                <span class="badge bg-secondary" id="http-status">200 OK</span>
+                            </div>
+                            <pre id="raw-response" class="mb-0 small bg-white p-2 rounded border" style="max-height: 120px; overflow-y: auto;"></pre>
+                        </div>
+
+                        <div class="d-flex justify-content-center gap-2 flex-wrap">
+                            <button id="refetch-btn" class="btn btn-primary px-4 py-2">
+                                Re-fetch from Backend
+                            </button>
+                            <a href="/api/hello" target="_blank" class="btn btn-outline-secondary px-4 py-2">
+                                Open Endpoint Directly
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Error state -->
+                    <div id="error-state" class="alert alert-danger py-4" style="display: none;" role="alert">
+                        <h4 class="alert-heading">Failed to fetch from backend</h4>
+                        <p id="error-message" class="mb-3">Could not connect to /api/hello.</p>
+                        <button id="retry-btn" class="btn btn-danger">Retry</button>
+                    </div>
+                </div>
+                <div class="card-footer bg-light text-muted text-center py-3 small">
+                    Backend Endpoint: <code class="text-primary">GET /api/hello</code> &bull; Built with ASP.NET Core &amp; Razor Pages
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    async function fetchHelloWorld() {
+        const loadingState = document.getElementById('loading-state');
+        const contentState = document.getElementById('content-state');
+        const errorState = document.getElementById('error-state');
+        const statusBadge = document.getElementById('status-badge');
+        const helloMessage = document.getElementById('hello-message');
+        const rawResponse = document.getElementById('raw-response');
+        const httpStatus = document.getElementById('http-status');
+        const refetchBtn = document.getElementById('refetch-btn');
+
+        // Show loading state
+        loadingState.style.display = 'block';
+        contentState.style.display = 'none';
+        errorState.style.display = 'none';
+        statusBadge.className = 'badge bg-warning text-dark rounded-pill px-3 py-2 fw-medium';
+        statusBadge.textContent = 'Fetching...';
+        if (refetchBtn) refetchBtn.disabled = true;
+
+        try {
+            const startTime = performance.now();
+            const response = await fetch('/api/hello');
+            const duration = Math.round(performance.now() - startTime);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            let messageText = '';
+            let rawData = null;
+
+            if (contentType.includes('application/json')) {
+                rawData = await response.json();
+                messageText = rawData.message || JSON.stringify(rawData);
+            } else {
+                messageText = await response.text();
+                rawData = messageText;
+            }
+
+            // Update UI with response
+            helloMessage.textContent = messageText;
+            rawResponse.textContent = typeof rawData === 'object' ? JSON.stringify(rawData, null, 2) : rawData;
+            httpStatus.textContent = `${response.status} ${response.statusText} (${duration}ms)`;
+            httpStatus.className = 'badge bg-success';
+
+            statusBadge.className = 'badge bg-light text-primary rounded-pill px-3 py-2 fw-medium';
+            statusBadge.textContent = '● Backend Connected';
+
+            loadingState.style.display = 'none';
+            contentState.style.display = 'block';
+        } catch (error) {
+            console.error('Error fetching backend endpoint:', error);
+            document.getElementById('error-message').textContent = error.message;
+            statusBadge.className = 'badge bg-danger text-white rounded-pill px-3 py-2 fw-medium';
+            statusBadge.textContent = 'Connection Error';
+
+            loadingState.style.display = 'none';
+            errorState.style.display = 'block';
+        } finally {
+            if (refetchBtn) refetchBtn.disabled = false;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchHelloWorld();
+        document.getElementById('refetch-btn')?.addEventListener('click', fetchHelloWorld);
+        document.getElementById('retry-btn')?.addEventListener('click', fetchHelloWorld);
+    });
+</script>
+}
